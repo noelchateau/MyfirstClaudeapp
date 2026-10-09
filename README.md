@@ -22,7 +22,7 @@ produces, in `transcriptions/`:
 
 ## Install
 
-Requires Python 3.10+ and ffmpeg (for mp3/m4a input).
+Requires Python 3.10+. Input: WAV, FLAC, MP3, OGG, Opus, AIFF out of the box; M4A/AAC, WMA and video files (MP4, MOV…) when [ffmpeg](https://ffmpeg.org) is installed; MIDI (`.mid`) to skip transcription.
 
 ```bash
 pip install -e .            # DSP engine, no GPU or model download
