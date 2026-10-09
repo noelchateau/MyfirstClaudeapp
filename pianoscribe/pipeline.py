@@ -63,7 +63,7 @@ def run(input_path: str | Path, out_dir: str | Path, opts: Options | None = None
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = input_path.stem
-    title = opts.title or stem.replace("_", " ").replace("-", " ").title()
+    title = opts.title or " ".join(stem.replace("_", " ").replace("-", " ").split())
 
     y = sr = None
     if input_path.suffix.lower() in MIDI_SUFFIXES:

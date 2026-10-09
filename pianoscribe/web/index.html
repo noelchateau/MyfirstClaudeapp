@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pianoscribe</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B9%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f3ec; --surface: #fffdf8; --ink: #1f1d1a; --muted: #6d675d;
+    --line: #e2dccf; --accent: #2f5d50; --accent-ink: #fff; --accent-soft: #e3ece8;
+    --danger: #a3392f; --danger-soft: #f6e4e1; --paper: #ffffff;
+    --shadow: 0 1px 2px rgba(40,30,10,.06), 0 8px 24px rgba(40,30,10,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --surface: #211f1c; --ink: #efebe3; --muted: #a39d92;
+      --line: #36322c; --accent: #7fb8a4; --accent-ink: #10201b; --accent-soft: #23342e;
+      --danger: #e48a80; --danger-soft: #3a2421;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 28px; }
+  h1 { font: 600 30px/1.1 Georgia, "Iowan Old Style", "Times New Roman", serif; margin: 0; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+  [hidden] { display: none !important; }
+
+  /* Drop zone */
+  #drop {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    min-height: 300px; padding: 40px 24px; cursor: pointer;
+    border: 2px dashed var(--line); transition: border-color .15s, background .15s, transform .15s;
+  }
+  #drop:hover, #drop:focus-visible { border-color: var(--accent); outline: none; }
+  body.dragging #drop { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.01); }
+  #drop .icon { width: 64px; height: 64px; margin-bottom: 14px; color: var(--accent); }
+  #drop h2 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+  #drop p { margin: 0; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink); border-radius: 10px; padding: 10px 16px;
+    font: inherit; font-weight: 550; cursor: pointer; text-decoration: none;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.07); }
+  #drop .btn { margin-top: 18px; }
+
+  /* Options */
+  details { margin-top: 16px; padding: 4px 20px; }
+  summary { cursor: pointer; padding: 12px 0; font-weight: 550; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 18px; padding: 4px 0 18px; }
+  label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--muted); }
+  input, select {
+    font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 10px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+
+  /* Progress */
+  #progress { padding: 28px; }
+  #progress h2 { margin: 0 0 4px; font-size: 20px; }
+  #progress .file { color: var(--muted); margin: 0 0 20px; word-break: break-all; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .steps li { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+  .steps li.active { color: var(--ink); font-weight: 550; }
+  .steps li.done { color: var(--ink); }
+  .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; }
+  li.active .dot { border-color: var(--accent); border-top-color: transparent; animation: spin .8s linear infinite; }
+  li.done .dot { background: var(--accent); border-color: var(--accent); }
+  li.done .dot::after { content: ""; width: 6px; height: 10px; border: solid var(--accent-ink); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .elapsed { margin-top: 20px; font-size: 14px; color: var(--muted); }
+
+  /* Error */
+  #error { padding: 22px 24px; background: var(--danger-soft); border-color: transparent; color: var(--ink); }
+  #error h2 { margin: 0 0 6px; font-size: 18px; color: var(--danger); }
+  #error p { margin: 0 0 14px; }
+
+  /* Result */
+  #result .top { padding: 22px 24px; display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: center; justify-content: space-between; }
+  #result h2 { margin: 0; font: 600 24px/1.2 Georgia, serif; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 3px 12px; font-size: 14px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .player { padding: 0 24px 18px; }
+  .player audio { width: 100%; }
+  .scorebar { display: flex; justify-content: space-between; align-items: center; padding: 10px 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  .zoom { display: flex; gap: 6px; }
+  .zoom button { width: 34px; height: 34px; padding: 0; justify-content: center; }
+  #score { background: var(--paper); border-radius: 0 0 16px 16px; padding: 8px 4px 16px; min-height: 200px; overflow-x: auto; }
+  .saved { margin: 14px 0 0; font-size: 14px; color: var(--muted); word-break: break-all; }
+  a { color: var(--accent); }
+  .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+  .spacer { height: 16px; }
+
+  @media (max-width: 600px) {
+    main { padding: 20px 16px 48px; }
+    #drop { min-height: 240px; }
+    .actions .btn { flex: 1 1 auto; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pianoscribe</h1>
+    <p>Turn a piano recording into sheet music.</p>
+  </header>
+
+  <!-- 1. Choose a file -->
+  <section id="start">
+    <div id="drop" class="card" tabindex="0" role="button" aria-label="Choose a recording">
+      <svg class="icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="6" y="14" width="52" height="40" rx="5"/>
+        <path d="M17 14v26M28 14v26M39 14v26M50 14v26" opacity=".35"/>
+        <path d="M32 4v22M24 18l8 8 8-8"/>
+      </svg>
+      <h2>Drop a recording here</h2>
+      <p>WAV or MP3 &middot; solo piano works best</p>
+      <span class="btn primary">Choose a file&hellip;</span>
+    </div>
+    <input id="file" type="file" hidden
+           accept=".wav,.mp3,.flac,.ogg,.opus,.m4a,.mp4,.mov,.aif,.aiff,.mid,.midi,audio/*">
+
+    <details class="card" id="options">
+      <summary>Options (optional)</summary>
+      <div class="grid">
+        <label>Title
+          <input id="opt-title" placeholder="From the file name">
+        </label>
+        <label>Time signature
+          <select id="opt-ts">
+            <option>4/4</option><option>3/4</option><option>2/4</option>
+            <option>6/8</option><option>12/8</option><option>5/4</option>
+          </select>
+        </label>
+        <label>Tempo (beats per minute)
+          <input id="opt-bpm" type="number" min="30" max="260" step="1" placeholder="Detect automatically">
+        </label>
+        <label>Rhythm detail
+          <select id="opt-grid">
+            <option value="2">Simple (eighth notes)</option>
+            <option value="4" selected>Normal (sixteenth notes)</option>
+            <option value="3">Triplets</option>
+            <option value="6">Triplets + sixteenths</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">If the rhythm comes out wrong, set the time signature and tempo and try again.</p>
+    </details>
+  </section>
+
+  <!-- 2. Working -->
+  <section id="progress" class="card" hidden aria-live="polite">
+    <h2>Transcribing&hellip;</h2>
+    <p class="file" id="progress-file"></p>
+    <ul class="steps" id="steps">
+      <li data-step="upload"><span class="dot"></span>Reading the file</li>
+      <li data-step="listen"><span class="dot"></span>Listening for notes</li>
+      <li data-step="rhythm"><span class="dot"></span>Finding the beat and rhythm</li>
+      <li data-step="score"><span class="dot"></span>Writing the sheet music</li>
+    </ul>
+    <p class="elapsed" id="elapsed"></p>
+  </section>
+
+  <!-- Error -->
+  <section id="error" class="card" hidden role="alert">
+    <h2>Something went wrong</h2>
+    <p id="error-text"></p>
+    <button class="btn" data-action="restart">Try another file</button>
+  </section>
+
+  <!-- 3. Result -->
+  <section id="result" class="card" hidden>
+    <div class="top">
+      <div>
+        <h2 id="result-title"></h2>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="actions">
+        <a class="btn primary" id="dl-musicxml" download>Download score (MusicXML)</a>
+        <a class="btn" id="dl-pdf" download hidden>PDF</a>
+        <a class="btn" id="dl-midi" download>MIDI</a>
+        <button class="btn" id="open-folder">Show in folder</button>
+        <button class="btn" data-action="restart">New recording</button>
+      </div>
+    </div>
+    <div class="player" id="player" hidden>
+      <audio id="audio" controls preload="metadata"></audio>
+    </div>
+    <div class="scorebar">
+      <span>Preview</span>
+      <span class="zoom">
+        <button class="btn" id="zoom-out" aria-label="Zoom out">&minus;</button>
+        <button class="btn" id="zoom-in" aria-label="Zoom in">+</button>
+      </span>
+    </div>
+    <div id="score"></div>
+  </section>
+  <p class="saved" id="saved" hidden></p>
+  <p class="note" id="tip" hidden>
+    Open the MusicXML file in <a href="https://musescore.org" target="_blank" rel="noopener">MuseScore</a>
+    (free) to edit, play back or print the score. Automatic transcription is a first draft: expect to tidy a few notes.
+  </p>
+</main>
+
+<script src="/vendor/osmd.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const sections = ["start", "progress", "error", "result"];
+  let osmd = null, pollTimer = null, audioUrl = null, currentJob = null;
+
+  function show(name) {
+    sections.forEach((s) => ($(s).hidden = s !== name));
+    $("saved").hidden = $("tip").hidden = name !== "result";
+  }
+
+  // ---- choosing a file -------------------------------------------------
+  const drop = $("drop"), input = $("file");
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+  input.addEventListener("change", () => { if (input.files[0]) start(input.files[0]); input.value = ""; });
+
+  // The whole window is a drop target.
+  let depth = 0;
+  window.addEventListener("dragenter", (e) => { e.preventDefault(); depth++; document.body.classList.add("dragging"); });
+  window.addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; document.body.classList.remove("dragging"); } });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => {
+    e.preventDefault(); depth = 0; document.body.classList.remove("dragging");
+    const f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f && !$("start").hidden) start(f);
+  });
+
+  document.querySelectorAll('[data-action="restart"]').forEach((b) => b.addEventListener("click", () => {
+    clearInterval(pollTimer); show("start");
+  }));
+
+  // ---- progress --------------------------------------------------------
+  const ORDER = ["upload", "listen", "rhythm", "score"];
+  function setStep(step) {
+    const idx = ORDER.indexOf(step);
+    document.querySelectorAll("#steps li").forEach((li, i) => {
+      li.className = i < idx ? "done" : i === idx ? "active" : "";
+    });
+  }
+  function stepFromLog(log) {
+    const text = log.join("\n");
+    if (/Key:|Tempo/.test(text)) return "score";
+    if (/Found \d+ notes/.test(text)) return "rhythm";
+    if (/Transcribing|Reading MIDI/.test(text)) return "listen";
+    return "upload";
+  }
+
+  async function start(file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    const ok = ["wav","wave","mp3","flac","ogg","oga","opus","m4a","mp4","mov","aac","aif","aiff","mid","midi"];
+    if (!ok.includes(ext)) return fail(`"${file.name}" doesn't look like an audio file. Please choose a WAV or MP3.`);
+
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    audioUrl = /^(mid|midi)$/.test(ext) ? null : URL.createObjectURL(file);
+
+    $("progress-file").textContent = file.name;
+    setStep("upload"); show("progress");
+    const t0 = Date.now();
+    const tick = () => ($("elapsed").textContent = `${Math.round((Date.now() - t0) / 1000)} s — longer recordings take a little longer.`);
+    tick();
+
+    const params = new URLSearchParams({ name: file.name, ts: $("opt-ts").value, grid: $("opt-grid").value });
+    if ($("opt-title").value.trim()) params.set("title", $("opt-title").value.trim());
+    if ($("opt-bpm").value) params.set("bpm", $("opt-bpm").value);
+
+    let job;
+    try {
+      const res = await fetch("/api/transcribe?" + params, { method: "POST", body: file });
+      job = await res.json();
+      if (!res.ok) throw new Error(job.error || res.statusText);
+    } catch (err) {
+      return fail(err.message.includes("fetch") ? "Lost connection to Pianoscribe. Is its window still open?" : err.message);
+    }
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      tick();
+      try {
+        const res = await fetch(`/api/jobs/${job.id}`);
+        const j = await res.json();
+        setStep(stepFromLog(j.log));
+        if (j.state === "done") { clearInterval(pollTimer); finish(j); }
+        if (j.state === "error") { clearInterval(pollTimer); fail(friendly(j.error)); }
+      } catch {
+        clearInterval(pollTimer); fail("Lost connection to Pianoscribe. Is its window still open?");
+      }
+    }, 600);
+  }
+
+  function friendly(msg) {
+    if (/No notes were detected/.test(msg)) return "No piano notes were found in this recording. Is it silent, or very quiet?";
+    if (/extract audio|Could not read|no audio/i.test(msg)) return "This file couldn't be read as audio. Try exporting it as WAV or MP3.";
+    return msg;
+  }
+
+  function fail(msg) { $("error-text").textContent = msg; show("error"); }
+
+  // ---- result ----------------------------------------------------------
+  async function finish(job) {
+    currentJob = job;
+    const title = $("opt-title").value.trim() || job.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+    $("result-title").textContent = title;
+    const s = job.summary, chips = [];
+    if (s.key) chips.push(s.key.replace(/^(\w)/, (c) => c.toUpperCase()));
+    if (s.bpm) chips.push(`♩ = ${s.bpm}`);
+    chips.push(`${s.notes} notes`);
+    $("chips").innerHTML = "";
+    chips.forEach((c) => { const el = document.createElement("span"); el.className = "chip"; el.textContent = c; $("chips").append(el); });
+
+    $("dl-musicxml").href = job.files.musicxml;
+    $("dl-midi").href = job.files.midi || "#";
+    $("dl-midi").hidden = !job.files.midi;
+    $("dl-pdf").hidden = !job.files.pdf;
+    if (job.files.pdf) $("dl-pdf").href = job.files.pdf;
+    $("player").hidden = !audioUrl;
+    if (audioUrl) $("audio").src = audioUrl;
+    $("saved").textContent = `Saved in ${job.folder}`;
+    show("result");
+
+    const scoreEl = $("score");
+    scoreEl.textContent = "Drawing the score…";
+    try {
+      const xml = await (await fetch(job.files.musicxml + "?inline=1")).text();
+      scoreEl.textContent = "";
+      osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(scoreEl, { autoResize: true, drawTitle: true, drawSubtitle: false, drawComposer: false, backend: "svg" });
+      await osmd.load(xml);
+      osmd.zoom = window.innerWidth < 600 ? 0.6 : 0.9;
+      osmd.render();
+    } catch (err) {
+      scoreEl.textContent = "The preview couldn't be drawn, but the downloaded score is fine.";
+    }
+  }
+
+  function zoom(by) {
+    if (!osmd) return;
+    osmd.zoom = Math.min(2, Math.max(0.3, osmd.zoom + by));
+    osmd.render();
+  }
+  $("zoom-in").addEventListener("click", () => zoom(0.15));
+  $("zoom-out").addEventListener("click", () => zoom(-0.15));
+  $("open-folder").addEventListener("click", () => currentJob && fetch(`/api/jobs/${currentJob.id}/open-folder`, { method: "POST" }));
+})();
+</script>
+</body>
+</html>

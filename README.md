@@ -1,12 +1,43 @@
 # pianoscribe
 
-Turn a recording of solo piano into sheet music.
+Turn a recording of solo piano into sheet music. Drag in a **WAV or MP3**, get a score.
 
-```
+![The Pianoscribe app](docs/app.png)
+
+## Using the app (no typing needed)
+
+**One-time setup:** install Python 3.12 or 3.13 from [python.org](https://www.python.org/downloads/).
+On Windows, tick **"Add python.exe to PATH"** in the installer.
+
+**Then, every time:**
+
+1. Double-click the launcher in this folder:
+   - Windows: **`Start Pianoscribe (Windows).bat`**
+   - Mac: **`Start Pianoscribe (Mac).command`** (the very first time, right-click it → **Open** → **Open**,
+     because macOS is cautious about downloaded files)
+2. A small window appears and your web browser opens Pianoscribe. The first start takes a few minutes
+   while it sets itself up; after that it opens in seconds.
+3. Drag your WAV or MP3 onto the page (or click **Choose a file…**).
+4. When it's done you see the sheet music, can listen to your recording next to it, and can
+   **Download score (MusicXML)** to open in [MuseScore](https://musescore.org) (free) for editing,
+   playback and printing. Everything is also saved in **Documents › Pianoscribe**.
+
+To quit, close the small window. Everything runs on your own computer; recordings are never uploaded.
+
+If the rhythm looks off, open **Options**, set the time signature and tempo, and drop the file again.
+
+## Using the command line (optional)
+
+```bash
+pip install -e .            # DSP engine, no GPU or model download
+pip install -e ".[neural]"  # + the neural engine (recommended for real recordings)
 pianoscribe my_recording.mp3
+pianoscribe-app             # opens the drag-and-drop app
 ```
 
-produces, in `transcriptions/`:
+Input: **WAV** and **MP3** (also FLAC, OGG, Opus, AIFF, and the audio track of MP4/MOV/M4A files).
+ffmpeg is bundled through the `imageio-ffmpeg` dependency. MIDI (`.mid`) input skips transcription.
+Output, in `transcriptions/`:
 
 | file | what it is |
 | --- | --- |
@@ -15,19 +46,6 @@ produces, in `transcriptions/`:
 | `my_recording.score.mid` | the quantized score as MIDI |
 | `my_recording.pdf` | engraved PDF (with `--pdf`, needs [MuseScore](https://musescore.org) installed) |
 | `my_recording.performance.mid` | raw, unquantized transcription (with `--performance-midi`) |
-
-![Demo output](docs/demo_score.png)
-
-*Output of `pianoscribe --demo`: a synthesized two-hand "Ode to Joy" transcribed back to notation.*
-
-## Install
-
-Requires Python 3.10+. Input: **WAV** and **MP3** (also FLAC, OGG, Opus, AIFF, and the audio track of MP4/MOV/M4A files). ffmpeg is bundled through the `imageio-ffmpeg` dependency, so nothing else needs installing. MIDI (`.mid`) input skips transcription.
-
-```bash
-pip install -e .            # DSP engine, no GPU or model download
-pip install -e ".[neural]"  # + the neural engine (recommended for real recordings)
-```
 
 ## How it works
 
@@ -99,6 +117,11 @@ Be aware:
 - Each hand is written as a single voice of chords; independent inner voices aren't separated.
 
 ## Development
+
+The app (`pianoscribe/app.py`, `pianoscribe/web/`) is a small local web server built on the Python
+standard library; the score preview uses a bundled copy of
+[OpenSheetMusicDisplay](https://opensheetmusicdisplay.org) (BSD-3, see `pianoscribe/web/vendor/`).
+
 
 ```bash
 pip install -e ".[dev]"

@@ -214,7 +214,7 @@ _HTML = """<!doctype html>
   const xml = {xml_json};
   document.getElementById("score").textContent = "";
   const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("score", {{
-    autoResize: true, drawTitle: false, backend: "svg"
+    autoResize: true, drawTitle: false, drawSubtitle: false, backend: "svg"
   }});
   osmd.load(xml).then(() => osmd.render()).catch(err => {{
     document.getElementById("score").textContent = "Could not render score: " + err;

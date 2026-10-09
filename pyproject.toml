@@ -25,9 +25,13 @@ dev = ["pytest"]
 
 [project.scripts]
 pianoscribe = "pianoscribe.cli:main"
+pianoscribe-app = "pianoscribe.app:main"
 
 [tool.setuptools]
-packages = ["pianoscribe"]
+packages = ["pianoscribe", "pianoscribe.web"]
+
+[tool.setuptools.package-data]
+"pianoscribe.web" = ["index.html", "vendor/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
