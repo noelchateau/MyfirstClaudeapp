@@ -35,6 +35,34 @@ def mp4(wav):
     return path
 
 
+@pytest.fixture(scope="module")
+def mp3(wav):
+    path = wav.with_name("recital.mp3")
+    _ffmpeg("-i", wav, "-b:a", "128k", path)
+    return path
+
+
+def test_mp3_transcribes_like_wav(wav, mp3):
+    a, b = load_audio(str(wav)), load_audio(str(mp3))
+    assert abs(len(a) - len(b)) < 0.1 * SAMPLE_RATE  # encoder padding
+    assert note_f1(REF, transcribe_dsp(b)).f1 == 1.0
+
+
+def test_mp3_end_to_end(mp3, tmp_path):
+    assert main([str(mp3), "-o", str(tmp_path)]) == 0
+    assert (tmp_path / "recital.musicxml").stat().st_size > 0
+
+
+def test_mp3_falls_back_to_ffmpeg(mp3, monkeypatch):
+    import librosa
+
+    def no_mp3(*args, **kwargs):
+        raise RuntimeError("Format not recognised")
+
+    monkeypatch.setattr(librosa, "load", no_mp3)
+    assert len(load_audio(str(mp3))) > SAMPLE_RATE
+
+
 def test_wav_and_mp4_load_the_same_audio(wav, mp4):
     a, b = load_audio(str(wav)), load_audio(str(mp4))
     assert abs(len(a) - len(b)) < 0.1 * SAMPLE_RATE  # AAC adds a little padding

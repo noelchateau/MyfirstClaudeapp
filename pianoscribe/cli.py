@@ -14,7 +14,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="pianoscribe",
         description="Transcribe solo piano audio into sheet music (MusicXML, MIDI, HTML, PDF).",
     )
-    p.add_argument("input", nargs="?", help="audio or video file (wav, mp4, mp3, flac, m4a, mov...) or a MIDI file")
+    p.add_argument("input", nargs="?", help="audio file (wav, mp3, flac, ...; also mp4/m4a) or a MIDI file")
     p.add_argument("-o", "--out-dir", default="transcriptions", help="output folder (default: %(default)s)")
     p.add_argument("--engine", choices=["auto", "dsp", "neural"], default="auto",
                    help="transcription engine; 'auto' uses neural when installed (default: %(default)s)")

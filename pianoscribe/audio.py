@@ -64,7 +64,11 @@ def load_audio(path: str, sr: int = SAMPLE_RATE) -> np.ndarray:
     if not Path(path).exists():
         raise RuntimeError(f"{path} not found")
     if Path(path).suffix.lower() in DIRECT_SUFFIXES:
-        y, _ = librosa.load(path, sr=sr, mono=True)
+        try:
+            y, _ = librosa.load(path, sr=sr, mono=True)
+        except Exception:
+            # e.g. an older libsndfile without MP3 support, or an unusual encoding
+            y = _decode_with_ffmpeg(path, sr)
     else:
         y = _decode_with_ffmpeg(path, sr)
     if y.size == 0:
