@@ -11,30 +11,63 @@ import numpy as np
 
 SAMPLE_RATE = 22050
 
+# Formats libsndfile reads natively; everything else goes through ffmpeg.
+DIRECT_SUFFIXES = {".wav", ".wave", ".flac", ".ogg", ".oga", ".mp3", ".aif", ".aiff", ".opus"}
+
+
+def find_ffmpeg() -> str | None:
+    """ffmpeg on the PATH, else the copy bundled with the imageio-ffmpeg package."""
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except (ImportError, RuntimeError):
+        return None
+
+
+def _decode_with_ffmpeg(path: str, sr: int) -> np.ndarray:
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None:
+        raise RuntimeError(
+            f"Could not read {Path(path).name}: this format needs ffmpeg. "
+            "Run `pip install imageio-ffmpeg` or install ffmpeg, or convert the file to WAV."
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = str(Path(tmp) / "decoded.wav")
+        # -vn: ignore any video stream (MP4/MOV); keep the first audio track, mono.
+        proc = subprocess.run(
+            [ffmpeg, "-loglevel", "error", "-y", "-i", str(path), "-vn", "-ac", "1",
+             "-ar", str(sr), wav],
+            capture_output=True, text=True,
+        )
+        if proc.returncode != 0 or not Path(wav).exists():
+            detail = proc.stderr.strip().splitlines()[-1] if proc.stderr.strip() else "no audio track found"
+            raise RuntimeError(f"Could not extract audio from {Path(path).name}: {detail}")
+        import soundfile as sf
+
+        y, _ = sf.read(wav, dtype="float32")
+    return y
+
 
 def load_audio(path: str, sr: int = SAMPLE_RATE) -> np.ndarray:
-    """Load an audio file as a mono float32 signal at ``sr``.
+    """Load an audio or video file as a mono float32 signal at ``sr``.
 
-    WAV, FLAC, OGG, MP3, AIFF and Opus are read directly; anything else
-    (M4A/AAC, WMA, video files...) is decoded with ffmpeg when it is installed.
+    WAV, FLAC, OGG, MP3, AIFF and Opus are read directly. MP4/MOV video,
+    M4A/AAC and anything else ffmpeg understands are decoded with ffmpeg
+    (bundled via the imageio-ffmpeg dependency).
     """
     import librosa
 
-    try:
+    if not Path(path).exists():
+        raise RuntimeError(f"{path} not found")
+    if Path(path).suffix.lower() in DIRECT_SUFFIXES:
         y, _ = librosa.load(path, sr=sr, mono=True)
-    except Exception as err:
-        ffmpeg = shutil.which("ffmpeg")
-        if ffmpeg is None:
-            raise RuntimeError(
-                f"Could not read {Path(path).name}: {err}. Install ffmpeg to open this format, "
-                "or convert the file to WAV, FLAC or MP3."
-            ) from err
-        with tempfile.TemporaryDirectory() as tmp:
-            wav = str(Path(tmp) / "decoded.wav")
-            subprocess.run([ffmpeg, "-loglevel", "error", "-y", "-i", str(path), "-ac", "1", wav],
-                           check=True, capture_output=True)
-            y, _ = librosa.load(wav, sr=sr, mono=True)
-    peak = np.max(np.abs(y)) if y.size else 0.0
-    if peak > 0:
-        y = y / peak
+    else:
+        y = _decode_with_ffmpeg(path, sr)
+    if y.size == 0:
+        raise RuntimeError(f"{Path(path).name} contains no audio")
+    y = y / max(float(np.max(np.abs(y))), 1e-9)
     return y.astype(np.float32)

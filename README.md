@@ -22,7 +22,7 @@ produces, in `transcriptions/`:
 
 ## Install
 
-Requires Python 3.10+. Input: WAV, FLAC, MP3, OGG, Opus, AIFF out of the box; M4A/AAC, WMA and video files (MP4, MOV…) when [ffmpeg](https://ffmpeg.org) is installed; MIDI (`.mid`) to skip transcription.
+Requires Python 3.10+. Input: **WAV** and **MP4** (or MOV/M4A video and audio; the audio track is extracted), plus FLAC, MP3, OGG, Opus, AIFF. ffmpeg is bundled through the `imageio-ffmpeg` dependency, so nothing else needs installing. MIDI (`.mid`) input skips transcription.
 
 ```bash
 pip install -e .            # DSP engine, no GPU or model download

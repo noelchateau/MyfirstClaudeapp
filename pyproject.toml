@@ -13,6 +13,7 @@ dependencies = [
     "scipy",
     "librosa>=0.10",
     "soundfile",
+    "imageio-ffmpeg",  # bundled ffmpeg for MP4/MOV/M4A input
     "music21>=9",
     "pretty_midi",
 ]
